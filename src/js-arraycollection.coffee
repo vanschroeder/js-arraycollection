@@ -8,8 +8,8 @@ if typeof exports != 'undefined'
   'use strict'
   wf = global.wf = {} if !global.wf
   # A partial port of Backbone.Events for event binding/triggering
-  if !Events
-    Events =
+  if !global.Events
+    Events = global.Events =
       on: (name, callback, context)->
         return @ if  !eventsApi( @, 'on', name, [callback, context]) || !callback
         @_events || (@_events = {})
