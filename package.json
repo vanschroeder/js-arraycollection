@@ -3,6 +3,7 @@
   "name": "js-arraycollection",
   "description": "A Javascript implemntation of ArrayCollection",
   "version": "0.0.1",
+  "preferGlobal": false,
   "main":"lib/js-arraycollection.js",
   "licenses": [
     {
