@@ -1,0 +1,23 @@
+[
+  {"name":"object1",
+   "value":"one"
+  },
+  {"name":"object2",
+   "value":"two"
+  },
+  {"name":"object3",
+   "value":"three"
+  },
+  {"name":"object4",
+   "value":"four"
+  },
+  {"name":"object5",
+   "value":"five"
+  },
+  {"name":"object6",
+   "value":"6"
+  },
+  {"name":"object7",
+   "value":"seven"
+  }
+]

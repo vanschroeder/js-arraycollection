@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>js-arraycollection.coffee</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, target-densitydpi=160dpi, initial-scale=1.0; maximum-scale=1.0; user-scalable=0;">
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <div id="container">
+    <div id="background"></div>
+    
+    <ul class="sections">
+        
+          <li id="title">
+              <div class="annotation">
+                  <h1>js-arraycollection.coffee</h1>
+              </div>
+          </li>
+        
+        
+        
+        <li id="section-1">
+            <div class="annotation">
+              
+              <div class="pilwrap for-h3">
+                <a class="pilcrow" href="#section-1">&#182;</a>
+              </div>
+              <h3>A simple in-memory Object Store for protoyping</h3>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>global = exports ? window</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-2">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-2">&#182;</a>
+              </div>
+              <p>include  Backbone and Underscore if we are in a Node App</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre><span class="keyword">if</span> <span class="keyword">typeof</span> exports != <span class="string">'undefined'</span>
+  _ = require(<span class="string">'underscore'</span>)
+(-&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-3">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-3">&#182;</a>
+              </div>
+              <p>restrict our code to use less dangerous functionality</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="string">'use strict'</span>
+  wf = global.wf = {} <span class="keyword">if</span> !global.wf</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-4">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-4">&#182;</a>
+              </div>
+              <p>A partial port of Backbone.Events for event binding/triggering</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>  <span class="keyword">if</span> !Events
+    Events =
+      <span class="literal">on</span>: (name, callback, context)-&gt;
+        <span class="keyword">return</span> @ <span class="keyword">if</span>  !eventsApi( @, <span class="string">'on'</span>, name, [callback, context]) || !callback
+        <span class="property">@_events</span> || (<span class="property">@_events</span> = {})
+        events = <span class="property">@_events</span>[name] || (<span class="property">@_events</span>[name] = [])
+        events.push callback: callback, context: context, ctx: context || @
+        @
+      <span class="literal">off</span>: (name, callback, context)-&gt;
+        <span class="keyword">return</span> @ <span class="keyword">if</span> !<span class="property">@_events</span> || !eventsApi(@, <span class="string">'off'</span>, name, [callback, context])
+        <span class="keyword">if</span> (!name &amp;&amp; !callback &amp;&amp; !context)
+          <span class="property">@_events</span> = {};
+          <span class="keyword">return</span> @
+        names = <span class="keyword">if</span> name <span class="keyword">then</span> [name] <span class="keyword">else</span> _.keys <span class="property">@_events</span>
+        _.each names, (v,i)=&gt;
+          name = names[i];
+          <span class="keyword">if</span> (events = <span class="keyword">this</span>._events[name]) 
+            <span class="keyword">this</span>._events[name] = retain = []
+            <span class="keyword">if</span> (callback || context)
+              k = events.length
+              _.each events, (v,j)=&gt;
+                retain.push ev <span class="keyword">if</span> (callback &amp;&amp; callback != (ev = events[j]).callback &amp;&amp; callback != ev.callback._callback) || (context &amp;&amp; context != ev.context)
+            <span class="keyword">delete</span> <span class="property">@_events</span>[name] <span class="keyword">if</span> !retain.length
+        @
+      trigger: (name)-&gt;
+        <span class="keyword">return</span> @ <span class="keyword">if</span> !<span class="property">@_events</span>
+        args = [].slice.call arguments, <span class="number">1</span>
+        <span class="keyword">return</span> @ <span class="keyword">if</span> !eventsApi @, <span class="string">'trigger'</span>, name, args
+        events    = <span class="property">@_events</span>[name]
+        allEvents = <span class="property">@_events</span>.all
+        triggerEvents events, args <span class="keyword">if</span> events
+        triggerEvents allEvents, arguments <span class="keyword">if</span> allEvents
+        @
+    eventSplitter = <span class="regexp">/\s+/</span>
+    <span class="function"><span class="title">eventsApi</span></span> = (obj, action, name, rest)-&gt;
+      <span class="keyword">return</span> <span class="literal">true</span> <span class="keyword">if</span> !name
+      <span class="keyword">if</span> <span class="keyword">typeof</span> name == <span class="string">'object'</span>
+        _.each name, (v,key)=&gt; obj[action].apply( obj, [key, name[key]].concat rest )
+        <span class="keyword">return</span> <span class="literal">false</span>
+      <span class="keyword">if</span> eventSplitter.test name
+        names = name.split(eventSplitter);
+        _.each names, (v,i)=&gt;
+          obj[action].apply(obj, [names[i]].concat(rest));
+        <span class="keyword">return</span> <span class="literal">false</span>;
+      <span class="literal">true</span>
+    <span class="function"><span class="title">triggerEvents</span></span> = (events, args)-&gt;
+      i = -<span class="number">1</span>
+      l = events.length
+      a1 = args[<span class="number">0</span>]
+      a2 = args[<span class="number">1</span>]
+      a3 = args[<span class="number">2</span>]
+      <span class="keyword">switch</span> (args.length)
+        <span class="keyword">when</span> <span class="number">0</span>
+          <span class="keyword">while</span> (++i &lt; l) 
+            (ev = events[i]).callback.call(ev.ctx) 
+          <span class="keyword">return</span>
+        <span class="keyword">when</span> <span class="number">1</span>
+          <span class="keyword">while</span> (++i &lt; l) 
+            (ev = events[i]).callback.call(ev.ctx, a1) 
+          <span class="keyword">return</span>
+        <span class="keyword">when</span> <span class="number">2</span>
+          <span class="keyword">while</span> (++i &lt; l) 
+            (ev = events[i]).callback.call(ev.ctx, a1, a2)
+          <span class="keyword">return</span>
+        <span class="keyword">when</span> <span class="number">3</span>
+          <span class="keyword">while</span> (++i &lt; l) 
+            (ev = events[i]).callback.call(ev.ctx, a1, a2, a3)
+          <span class="keyword">return</span>
+        <span class="keyword">else</span>
+          <span class="keyword">while</span> (++i &lt; l) 
+            (ev = events[i]).callback.apply(ev.ctx, args)
+    Events.bind   = Events.<span class="literal">on</span>
+    Events.unbind = Events.<span class="literal">off</span>
+  <span class="class"><span class="keyword">class</span> <span class="title">global</span>.<span class="title">ArrayCollection</span></span>
+    __updated:<span class="literal">false</span>
+    __list:[]
+    __callbacks:[]
+    __serial:<span class="string">''</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-5">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-5">&#182;</a>
+              </div>
+              <p>converts hash in serialized arrays of key/val pairs</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    __serialize:(o)-&gt;
+      _.map o, (v,k)-&gt; 
+        _.map _.pairs(v), (v1,k1)-&gt; v1.join <span class="string">':'</span>
+    constructor : (source)-&gt;
+      _.extend @, Events</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-6">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-6">&#182;</a>
+              </div>
+              <p>setSource if list is passed</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      <span class="property">@setSource</span> source <span class="keyword">if</span> source?</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-7">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-7">&#182;</a>
+              </div>
+              <p>start watching for changes on source array</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>      setInterval (=&gt;
+        updates = []</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-8">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-8">&#182;</a>
+              </div>
+              <p>quack pass on serilized versions</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="keyword">if</span> <span class="property">@__serial</span> != (sList = <span class="property">@__serialize</span> <span class="property">@__list</span>)</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-9">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-9">&#182;</a>
+              </div>
+              <p>loop through serial items if change is detected</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>          _.each <span class="property">@__serial</span>, (v,k)=&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-10">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-10">&#182;</a>
+              </div>
+              <p>get the changed properties from serizlized item</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>            <span class="keyword">if</span> (diff = _.difference v, sList[k]).length
+              _.each diff, (dV,dK) =&gt;</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-11">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-11">&#182;</a>
+              </div>
+              <p>puch each updated property and it&#39;s item into an item Update object</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>                updates.push <span class="property">@itemUpdated</span> <span class="property">@__list</span>[k], (prop=dV.split <span class="string">':'</span>)[<span class="number">0</span>], prop[<span class="number">1</span>], <span class="property">@__list</span>[k][prop[<span class="number">0</span>]]</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-12">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-12">&#182;</a>
+              </div>
+              <p>dispatch update event with updated items</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>          <span class="property">@collectionChanged</span> <span class="string">'update'</span>, updates <span class="keyword">if</span> updates.length</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-13">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-13">&#182;</a>
+              </div>
+              <p>reset our serialized list</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        <span class="property">@__serial</span>   = <span class="property">@__serialize</span> <span class="property">@__list</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-14">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-14">&#182;</a>
+              </div>
+              <p>reset our updates list</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>        updates = []
+      ), <span class="number">200</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-15">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-15">&#182;</a>
+              </div>
+              <p>returns collection length</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    length : -&gt;
+      <span class="property">@__list</span>.length</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-16">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-16">&#182;</a>
+              </div>
+              <p>sets the source array resulting in an added event</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    setSource : (source)-&gt;
+      <span class="property">@addAll</span> source <span class="keyword">if</span> source?</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-17">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-17">&#182;</a>
+              </div>
+              <p>resets the soruce array resulting ina reset event</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    clearSource : -&gt;
+      <span class="property">@removeAll</span>()</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-18">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-18">&#182;</a>
+              </div>
+              <p>adds all passed lit members to source</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    addAll : (list)-&gt;
+      <span class="property">@addAllAt</span> list, <span class="property">@__list</span>.length</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-19">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-19">&#182;</a>
+              </div>
+              <p>adds all passed list members to source starting at offset index</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    addAllAt : (list, idx)-&gt;
+      last = (l = _.clone <span class="property">@__list</span>).splice idx, l.length
+      cat = _.partial ((a2,a3,a1)-&gt; _.compact [].concat a1,a2,a3), (added = _.clone list), last
+      <span class="property">@__list</span> = <span class="keyword">if</span> l.length <span class="keyword">then</span> cat l  <span class="keyword">else</span> cat()
+      <span class="property">@collectionChanged</span> <span class="string">'added'</span>, added</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-20">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-20">&#182;</a>
+              </div>
+              <p>add an individual item to the source</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    addItem : (itm)-&gt;
+      <span class="property">@addItemAt</span> itm, <span class="property">@__list</span>.length</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-21">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-21">&#182;</a>
+              </div>
+              <p>add an individual item to the source at offset</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    addItemAt : (itm,idx)-&gt;
+      <span class="property">@addAllAt</span> itm, idx</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-22">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-22">&#182;</a>
+              </div>
+              <p>check if source contains specified item</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    contains : (itm)-&gt;
+      _.contains <span class="property">@__list</span>, itm</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-23">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-23">&#182;</a>
+              </div>
+              <p>get item at given index</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    getItemAt : (idx)-&gt;
+      <span class="property">@__list</span>[idx] || <span class="literal">null</span></pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-24">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-24">&#182;</a>
+              </div>
+              <p>get items index</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    getItemIndex : (itm)-&gt;
+      <span class="property">@__list</span>.indexOf itm</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-25">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-25">&#182;</a>
+              </div>
+              <p>triggers a collection change -- don&#39;t call dirrectly</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    collectionChanged : (operation, items) -&gt;
+      data = {}
+      data[operation] = items
+      <span class="property">@__updated</span> = <span class="literal">true</span>
+      <span class="property">@__serial</span> = <span class="property">@__serialize</span> <span class="property">@__list</span>
+      <span class="property">@trigger</span> <span class="string">'collectionChanged'</span>, data</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-26">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-26">&#182;</a>
+              </div>
+              <p>item updated method -- don&#39;t call directly</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    itemUpdated : (o,p,oV,nV) -&gt;
+      item:o
+      prop:p
+      oldValue:oV
+      newValue:nV</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-27">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-27">&#182;</a>
+              </div>
+              <p>remove all members in source resulting in reset event</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    removeAll : -&gt;
+      l = <span class="property">@__list</span>.splice <span class="number">0</span>, <span class="property">@__list</span>.length
+      <span class="property">@collectionChanged</span> <span class="string">'reset'</span>, l</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-28">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-28">&#182;</a>
+              </div>
+              <p>remove item at index resulting in remove event</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    removeItemAt : (idx)-&gt;
+      <span class="property">@collectionChanged</span> <span class="string">'removed'</span>, (<span class="property">@__list</span>.splice idx, <span class="number">1</span>) <span class="keyword">if</span> <span class="property">@__list</span>.length &gt;= idx</pre></div></div>
+            
+        </li>
+        
+        
+        <li id="section-29">
+            <div class="annotation">
+              
+              <div class="pilwrap ">
+                <a class="pilcrow" href="#section-29">&#182;</a>
+              </div>
+              <p>replace item at index with given item resulting in replaced event</p>
+
+            </div>
+            
+            <div class="content"><div class='highlight'><pre>    setItemAt : (itm,idx)-&gt;
+      r = <span class="literal">null</span>
+      r = <span class="property">@__list</span>.splice idx, <span class="number">1</span> <span class="keyword">if</span> <span class="property">@__list</span>.length &gt;= idx
+      <span class="property">@__list</span>.splice idx, <span class="number">1</span>, itm
+      <span class="property">@collectionChanged</span> <span class="string">'replaced'</span>, r
+).call @</pre></div></div>
+            
+        </li>
+        
+    </ul>
+  </div>
+</body>
+</html>
