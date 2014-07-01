@@ -1,0 +1,19 @@
+{
+  "name": "js-arraycollection",
+  "version": "0.0.1",
+  "main": "lib/js-arraycollection.js",
+  "ignore": [
+    ".jshintrc",
+    "**/*.txt",
+    "./index.js",
+    "./.travis.yml",
+    "test",
+    "package.json",
+    "src"
+  ],
+  "dependencies": {
+    "underscore": ">=1.6.0"
+  },
+  "devDependencies": {
+  }
+}

@@ -1,9 +1,12 @@
 # require Node::FS
 fs = require 'fs'
 # require Node::Util
+# connect = require 'connect'
 {debug, error, log, print} = require 'util'
 # import Spawn and Exec from child_process
 {spawn, exec, execFile}=require 'child_process'
+
+
 # colors
 red   = "\u001b[0;31m"
 green = "\u001b[0;32m"
@@ -30,19 +33,23 @@ exts='coffee|jade'
 # Begin Callback Handlers
 # Callback From 'coffee'
 coffeeCallback=()->
-  exec 'cp lib/sparse.js ../sparse-demo/src/assets/javascript'
+  # exec 'cp lib/sparse.js ../sparse-demo/src/assets/javascript'
+  # minify()
 # Callback From 'docco'
 doccoCallback=()->
-
+  # exec "rm -rf ../sparse-pages/docs; mv docs ../sparse-pages"
 # Begin Tasks
 # ## *build*
 # Compiles Sources
 task 'build', 'Compiles Sources', ()-> build -> log ':)', green
 build = ()->
   # From Module 'coffee'
+  
   # Enable coffee-script compiling
-  launch 'coffee', (['-c', '-b', '-o' ].concat paths.coffee), coffeeCallback
+  #launch 'coffee', (['-j','lib/sparse.js', '-c', 'src/sparse.coffee', 'src/classes/*']), coffeeCallback
 
+  # console.log "coffee --join lib/api.js --compile #{apiFiles.files.join(' ').replace(/('|\")/g, '')}"
+  exec "coffee -b -c -o lib src", coffeeCallback
 # ## *watch*
 # watch project src folders and build on change
 task 'watch', 'watch project src folders and build on change', ()-> watch -> log ':)', green
@@ -52,12 +59,7 @@ watch = ()->
 # Minify Generated JS and HTML
 task 'minify', 'Minify Generated JS and HTML', ()-> minify -> log ':)', green
 minify = ()->
-  # minify js and html paths
-  if paths? and paths.uglify?
-    walk paths.uglify[0], (err, results) =>
-      for file in results
-        if file.match /(^\.min+)\.js+$/
-          launch 'uglifyjs', ['-c', '--output', "#{file.replace /\.js+$/,'.min.js'}", file]
+  exec 'uglifyjs -c --output lib/sparse.min.js lib/sparse.js'
 
 # ## *docs*
 # Generate Documentation
@@ -65,12 +67,12 @@ task 'docs', 'Generate Documentation', ()-> docs -> log ':)', green
 docs = ()->
   # From Module 'docco'
   #
-  if (moduleExists 'docco') && paths? && paths.coffee?
-    walk paths.coffee[1], (err, paths) ->
-      try
-        launch 'docco', paths, doccoCallback()
-      catch e
-        error e
+  if (moduleExists 'docco')
+    try
+    
+      launch 'docco', fList.files, doccoCallback
+    catch e
+      error e
 
 # ## *test*
 # Runs your test suite.
@@ -82,17 +84,16 @@ test = (options=[],callback)->
     if typeof options is 'function'
       callback = options
       options = []
+
     # add coffee directive
     options.push '--compilers'
-    options.push 'coffee:coffee-script'
+    options.push 'coffee:coffee-script/register'
     options.push '--reporter'
     options.push 'spec'
-    
+    # options.push '-g'
+    # options.push 'Query+'
+    console.log options.join ' '
     launch 'mocha', options, callback
-    
-task 'import:demo', 'Import the demo project build', (callback)-> import_demo -> log ':)', green
-import_demo = (callback)->
-  exec 'cp -r ../sparse-demo/demo .'
 
 # Begin Helpers
 #  
@@ -117,7 +118,7 @@ walk = (dir, done) ->
     pending = list.length
     return done(null, results) unless pending
     for name in list
-      continue if name.match /^\./
+      continue if name.match( /^\./) or name.match( /\.json$/ )
       file = "#{dir}/#{name}"
       try
         stat = fs.statSync file
