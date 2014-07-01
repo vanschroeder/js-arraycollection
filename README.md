@@ -4,7 +4,7 @@ js-arraycollection
 A Javascript Implementation of Array Collection (using UndercoreJS)
 
 [![Build Status](https://travis-ci.org/vancarney/js-arraycollection.png)](https://travis-ci.org/vancarney/js-arraycollection)
-
+[![NPM Version](http://img.shields.io/npm/v/js-arraycollection.svg)](https://www.npmjs.org/package/js-arraycollection)
 
 Installation
 -----------
